@@ -86,6 +86,7 @@ struct goodix_ts_data {
 	struct regulator *vddio;
 	struct gpio_desc *gpiod_int;
 	struct gpio_desc *gpiod_rst;
+	bool inverted_gpios;
 	int gpio_count;
 	int gpio_int_idx;
 	enum gpiod_flags gpiod_rst_flags;

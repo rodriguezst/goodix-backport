@@ -148,6 +148,25 @@ static const struct dmi_system_id inverted_x_screen[] = {
 	{}
 };
 
+
+/*
+ * Those machines have ActiveLow INT and somehow inverted RST 
+ * probably GT RST# is being driven by N-MOSFET, which in turn is driven by gpio
+ * Chuwi Hi12 in particular is also missing _DSD mapping for those gpios
+ */
+static const struct dmi_system_id goodix_inverted_gpios[] = {
+#if defined(CONFIG_DMI) && defined(CONFIG_X86)
+	{
+		.ident = "Chuwi Hi12",
+		.matches = {
+			DMI_MATCH(DMI_BOARD_VENDOR, "Hampoo"),
+			DMI_MATCH(DMI_BOARD_NAME, "Cherry Trail CR")
+		}
+	},
+#endif
+	{}
+};
+
 /**
  * goodix_i2c_read - read data from a register of the i2c slave device.
  *
@@ -724,7 +743,7 @@ int goodix_int_sync(struct goodix_ts_data *ts)
 {
 	int error;
 
-	error = goodix_irq_direction_output(ts, 0);
+	error = goodix_irq_direction_output(ts, 0 ^ ts->inverted_gpios);
 	if (error)
 		goto error;
 
@@ -751,20 +770,20 @@ int goodix_reset_no_int_sync(struct goodix_ts_data *ts)
 	int error;
 
 	/* begin select I2C slave addr */
-	error = gpiod_direction_output(ts->gpiod_rst, 0);
+	error = gpiod_direction_output(ts->gpiod_rst, 0 ^ ts->inverted_gpios);
 	if (error)
 		goto error;
 
 	msleep(20);				/* T2: > 10ms */
 
 	/* HIGH: 0x28/0x29, LOW: 0xBA/0xBB */
-	error = goodix_irq_direction_output(ts, ts->client->addr == 0x14);
+	error = goodix_irq_direction_output(ts, (ts->client->addr == 0x14) ^ ts->inverted_gpios);
 	if (error)
 		goto error;
 
 	usleep_range(100, 2000);		/* T3: > 100us */
 
-	error = gpiod_direction_output(ts->gpiod_rst, 1);
+	error = gpiod_direction_output(ts->gpiod_rst, 1 ^ ts->inverted_gpios);
 	if (error)
 		goto error;
 
@@ -956,6 +975,15 @@ static int goodix_add_acpi_gpio_mappings(struct goodix_ts_data *ts)
 }
 #endif /* CONFIG_X86 && CONFIG_ACPI */
 
+static const struct acpi_gpio_params goodix_invgpio_int = { 0, 0, true };	//declared as ActiveLow in ACPI GpioInt(), setting it false here has no effect
+static const struct acpi_gpio_params goodix_invgpio_rst = { 1, 0, false };	//this one has HW inversion (or GT9111 has active-high RST - unlikely), so physical-high means reset-active
+
+static const struct acpi_gpio_mapping goodix_inverted_gpios_map[] = {
+	{ GOODIX_GPIO_INT_NAME "-gpios", &goodix_invgpio_int, 1 },
+	{ GOODIX_GPIO_RST_NAME "-gpios", &goodix_invgpio_rst, 1 },
+	{ },
+};
+
 /**
  * goodix_get_gpio_config - Get GPIO config from ACPI/DT
  *
@@ -971,6 +999,15 @@ static int goodix_get_gpio_config(struct goodix_ts_data *ts)
 	if (!ts->client)
 		return -EINVAL;
 	dev = &ts->client->dev;
+
+	if (dmi_check_system(goodix_inverted_gpios) && ACPI_HANDLE(dev)) {
+		error = devm_acpi_dev_add_driver_gpios(dev, goodix_inverted_gpios_map);
+		if (error)
+			return error;
+		ts->inverted_gpios = true;
+	} else {
+		ts->inverted_gpios = false;
+	}
 
 	/*
 	 * By default we request the reset pin as input, leaving it in
