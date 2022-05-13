@@ -3,9 +3,8 @@ KERNEL_SOURCE_DIR ?= ../kernel
 
 EXTRA_CFLAGS +=
 
-DRIVER_FILES := goodix.o goodix_fwupload.o
-
-$(DRIVER_NAME)-objs:= $(DRIVER_FILES)
+obj-m := goodix_ts.o
+goodix_ts-y := goodix.o goodix_fwupload.o
 
 modules:
 	$(MAKE) -C $(KERNEL_SOURCE_DIR) O=out KCPPFLAGS="$(EXTRA_CFLAGS)" M=$(PWD) modules
@@ -17,3 +16,4 @@ install: modules_install
 
 clean:
 	$(MAKE) -C $(KERNEL_SOURCE_DIR) M=$(PWD) clean
+	
