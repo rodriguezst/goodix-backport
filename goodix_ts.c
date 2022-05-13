@@ -148,6 +148,23 @@ static const struct dmi_system_id inverted_x_screen[] = {
 	{}
 };
 
+
+/*
+ * Touchscreen needs to be reset at probe on some machines (i.e. Chuwi Hi12)
+ */
+static const struct dmi_system_id goodix_needs_reset[] = {
+#if defined(CONFIG_DMI) && defined(CONFIG_X86)
+	{
+		.ident = "Chuwi Hi12",
+		.matches = {
+			DMI_MATCH(DMI_BOARD_VENDOR, "Hampoo"),
+			DMI_MATCH(DMI_BOARD_NAME, "Cherry Trail CR")
+		}
+	},
+#endif
+	{}
+};
+
 /**
  * goodix_i2c_read - read data from a register of the i2c slave device.
  *
@@ -971,6 +988,10 @@ static int goodix_get_gpio_config(struct goodix_ts_data *ts)
 	if (!ts->client)
 		return -EINVAL;
 	dev = &ts->client->dev;
+
+	if (dmi_check_system(goodix_needs_reset) && ACPI_HANDLE(dev)) {
+		ts->reset_controller_at_probe = true;
+	}
 
 	/*
 	 * By default we request the reset pin as input, leaving it in
