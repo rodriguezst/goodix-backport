@@ -3,8 +3,8 @@ KERNEL_SOURCE_DIR ?= ../kernel
 
 EXTRA_CFLAGS +=
 
-obj-m := goodix_ts.o
-goodix_ts-y := goodix.o goodix_fwupload.o
+obj-m := goodix.o
+goodix-y := goodix_ts.o goodix_fwupload.o
 
 modules:
 	$(MAKE) -C $(KERNEL_SOURCE_DIR) O=out KCPPFLAGS="$(EXTRA_CFLAGS)" M=$(PWD) modules
