@@ -1005,6 +1005,7 @@ static int goodix_get_gpio_config(struct goodix_ts_data *ts)
 		if (error)
 			return error;
 		ts->inverted_gpios = true;
+		ts->reset_controller_at_probe = true;
 	} else {
 		ts->inverted_gpios = false;
 	}
