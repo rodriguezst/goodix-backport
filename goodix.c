@@ -18,7 +18,6 @@
 #include <linux/delay.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
-#include <linux/platform_data/x86/soc.h>
 #include <linux/slab.h>
 #include <linux/acpi.h>
 #include <linux/of.h>
@@ -806,6 +805,33 @@ static int goodix_reset(struct goodix_ts_data *ts)
 }
 
 #ifdef ACPI_GPIO_SUPPORT
+#include <asm/cpu_device_id.h>
+#include <asm/intel-family.h>
+
+static const struct x86_cpu_id baytrail_cpu_ids[] = {
+	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_ATOM_SILVERMONT, X86_FEATURE_ANY, },
+	{}
+};
+
+static const struct x86_cpu_id cherrytrail_cpu_ids[] = {
+	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_ATOM_AIRMONT, X86_FEATURE_ANY, },
+	{}
+};
+
+static inline bool soc_intel_is_byt(void)
+{
+	const struct x86_cpu_id *id = x86_match_cpu(baytrail_cpu_ids);
+
+	return !!id;
+}
+
+static inline bool soc_intel_is_cht(void)
+{
+	const struct x86_cpu_id *id = x86_match_cpu(cherrytrail_cpu_ids);
+
+	return !!id;
+}
+
 static const struct acpi_gpio_params first_gpio = { 0, 0, false };
 static const struct acpi_gpio_params second_gpio = { 1, 0, false };
 
